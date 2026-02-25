@@ -5,9 +5,11 @@ Author: [Sebastian Pabisz Frolund]
 Course: Numerical Scientific Computing 2026
 """
 
+from time import time
+
 import numpy as np
 import matplotlib.pyplot as plt
-#import time
+import time
 
 
 def mandelbrot_point(c, max_iter):
@@ -53,4 +55,21 @@ def mandelbrot_set(xmin, xmax, ymin, ymax, width, height, max_iter):
 
     return result
 
-print(mandelbrot_point(complex(0, 0), 100))
+if __name__ == "__main__":
+    # Parameters for the Mandelbrot set
+    xmin, xmax, ymin, ymax = -2.0, 1.0, -1.5, 1.5
+    width, height = 1024, 1024
+    max_iter = 100
+
+    start = time.time()
+    # Generate the Mandelbrot set
+    mandelbrot_image = mandelbrot_set(xmin, xmax, ymin, ymax, width, height, max_iter)
+    end = time.time()
+    print(f"Time taken to generate Mandelbrot set: {end - start:.2f} seconds")
+    # Plot the Mandelbrot set
+    plt.imshow(mandelbrot_image, extent=(xmin, xmax, ymin, ymax),cmap='viridis')
+    plt.colorbar()
+    plt.title('Mandelbrot Set')
+    plt.xlabel('Real Axis')
+    plt.ylabel('Imaginary Axis')
+    plt.show()
