@@ -4,12 +4,9 @@ Mandelbrot Set Generator
 Author: [Sebastian Pabisz Frolund]
 Course: Numerical Scientific Computing 2026
 """
-
-from time import time
-
 import numpy as np
 import matplotlib.pyplot as plt
-import time
+import time, statistics
 
 
 def mandelbrot_point(c, max_iter):
@@ -30,7 +27,7 @@ def mandelbrot_point(c, max_iter):
             return n
     return max_iter
 
-def mandelbrot_set(xmin, xmax, ymin, ymax, width, height, max_iter):
+def mandelbrot_set_naive(xmin, xmax, ymin, ymax, width, height, max_iter):
     """
     Generates the Mandelbrot set for a given region and resolution.
 
@@ -55,18 +52,27 @@ def mandelbrot_set(xmin, xmax, ymin, ymax, width, height, max_iter):
 
     return result
 
+def bench (fn , * args , runs =5) :
+    fn (* args ) # warm -up
+    times = []
+    for _ in range ( runs ) :
+        t0 = time . perf_counter ()
+        fn (* args )
+        times . append ( time . perf_counter () - t0 )
+    return statistics . median ( times )
+
 if __name__ == "__main__":
     # Parameters for the Mandelbrot set
     xmin, xmax, ymin, ymax = -2.0, 1.0, -1.5, 1.5
     width, height = 1024, 1024
     max_iter = 100
+    args = (xmin, xmax, ymin, ymax, width, height, 100)
 
-    start = time.time()
-    # Generate the Mandelbrot set
-    mandelbrot_image = mandelbrot_set(xmin, xmax, ymin, ymax, width, height, max_iter)
-    end = time.time()
-    print(f"Time taken to generate Mandelbrot set: {end - start:.2f} seconds")
-    # Plot the Mandelbrot set
+    t_naive = bench(mandelbrot_set_naive, *args)
+    print(f"Naive implementation took {t_naive:.4f} seconds")
+    
+    # Plot the Mandelbrot set using naive implementation
+    mandelbrot_image = mandelbrot_set_naive(*args)
     plt.imshow(mandelbrot_image, extent=(xmin, xmax, ymin, ymax),cmap='viridis')
     plt.colorbar()
     plt.title('Mandelbrot Set')
