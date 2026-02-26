@@ -52,6 +52,32 @@ def mandelbrot_set_naive(xmin, xmax, ymin, ymax, width, height, max_iter):
 
     return result
 
+def mandelbrot_set_vectorized(xmin, xmax, ymin, ymax, width, height, max_iter):
+    """
+    Generates the Mandelbrot set using vectorized operations for improved performance.
+
+    Parameters:
+    xmin, xmax (float): The range of the real part of the complex plane.
+    ymin, ymax (float): The range of the imaginary part of the complex plane.
+    width, height (int): The resolution of the output image.
+    max_iter (int): The maximum number of iterations to perform.
+
+    Returns:
+    np.ndarray: A 2D array representing the Mandelbrot set.
+    """
+    x_values = np.linspace(xmin, xmax, width)
+    y_values = np.linspace(ymin, ymax, height)
+    X, Y = np.meshgrid(x_values, y_values)
+    C = X + 1j * Y
+    
+    Z = np.zeros_like(C, dtype=complex)
+    result = np.zeros(C.shape, dtype=int)
+    for n in range(max_iter):
+        mask = np.abs(Z) <= 2
+        result[mask] = n
+        Z[mask] = Z[mask] * Z[mask] + C[mask]
+    return result
+
 def bench (fn , * args , runs =5) :
     fn (* args ) # warm -up
     times = []
@@ -69,10 +95,12 @@ if __name__ == "__main__":
     args = (xmin, xmax, ymin, ymax, width, height, 100)
 
     t_naive = bench(mandelbrot_set_naive, *args)
+    t_vectorized = bench(mandelbrot_set_vectorized, *args)
     print(f"Naive implementation took {t_naive:.4f} seconds")
+    print(f"Vectorized implementation took {t_vectorized:.4f} seconds")
     
-    # Plot the Mandelbrot set using naive implementation
-    mandelbrot_image = mandelbrot_set_naive(*args)
+    # Plot the Mandelbrot set using vectorized implementation
+    mandelbrot_image = mandelbrot_set_vectorized(*args)
     plt.imshow(mandelbrot_image, extent=(xmin, xmax, ymin, ymax),cmap='viridis')
     plt.colorbar()
     plt.title('Mandelbrot Set')
