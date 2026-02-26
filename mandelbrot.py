@@ -22,9 +22,9 @@ def mandelbrot_point(c, max_iter):
     """
     z = 0
     for n in range(max_iter):
-        z = z * z + c
         if abs(z) > 2:
             return n
+        z = z * z + c
     return max_iter
 
 def mandelbrot_set_naive(xmin, xmax, ymin, ymax, width, height, max_iter):
@@ -74,8 +74,8 @@ def mandelbrot_set_vectorized(xmin, xmax, ymin, ymax, width, height, max_iter):
     result = np.zeros(C.shape, dtype=int)
     for n in range(max_iter):
         mask = np.abs(Z) <= 2
-        result[mask] = n
         Z[mask] = Z[mask] * Z[mask] + C[mask]
+        result[mask] += 1
     return result
 
 def bench (fn , * args , runs =5) :
@@ -98,7 +98,7 @@ if __name__ == "__main__":
     t_vectorized = bench(mandelbrot_set_vectorized, *args)
     print(f"Naive implementation took {t_naive:.4f} seconds")
     print(f"Vectorized implementation took {t_vectorized:.4f} seconds")
-    
+
     # Plot the Mandelbrot set using vectorized implementation
     mandelbrot_image = mandelbrot_set_vectorized(*args)
     plt.imshow(mandelbrot_image, extent=(xmin, xmax, ymin, ymax),cmap='viridis')
