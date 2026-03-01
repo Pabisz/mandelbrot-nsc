@@ -70,15 +70,30 @@ def mandelbrot_naive_numba(xmin, xmax, ymin, ymax, width, height, max_iter, dtyp
     result = np . zeros (( height , width ), dtype = np.int32)
     for i in range ( height ):
         for j in range ( width ):
-            c = x [j] + 1j * y[ i]
-            z = 0 + 0j
+            c = np.complex128(x[j] + y[i] * 1j)
+            z = np.complex128(0.0 + 0.0 * 1j)
             n = 0
             while n < max_iter and \
-                z.real * z.real + z.imag * z.imag <= 4.0:
+                z.real * z.real + z.imag * z.imag <= dtype(4.0):
                 z = z*z + c ; n += 1
             result [i , j ] = n
     return result
-    
+
+@njit
+def mandelbrot_naive_numba32(xmin, xmax, ymin, ymax, width, height, max_iter, dtype = np.float32):
+    x = np.linspace ( xmin , xmax , width ).astype(dtype)
+    y = np.linspace ( ymin , ymax , height ).astype(dtype)
+    result = np . zeros (( height , width ), dtype = np.int32)
+    for i in range ( height ):
+        for j in range ( width ):
+            c = np.complex64(x[j] + y[i] * 1j)
+            z = np.complex64(0.0 + 0.0 * 1j)
+            n = 0
+            while n < max_iter and \
+                z.real * z.real + z.imag * z.imag <= dtype(4.0):
+                z = z*z + c ; n += 1
+            result [i , j ] = n
+    return result
 
 def bench (fn , * args , runs =5, **kwargs):
     fn (* args , **kwargs) # warm -up
@@ -88,7 +103,7 @@ def bench (fn , * args , runs =5, **kwargs):
         fn (* args , **kwargs)
         times . append ( time . perf_counter () - t0 )
     return statistics . median ( times )
-mandelbrot_naive_numba ( -2 , 1 , -1.5 , 1.5 , 1024 , 1024 ,100 , dtype = np.float64 )
+
 
 if __name__ == "__main__":
     # Parameters for the Mandelbrot set
@@ -101,23 +116,24 @@ if __name__ == "__main__":
     t_vectorized = bench(mandelbrot_set_vectorized, *args)
     t_hybrid = bench(mandelbrot_hybrid, *args)
     t_numba = bench(mandelbrot_naive_numba, *args)
+    t_numba32 = bench(mandelbrot_naive_numba32, *args)
     print(f"Naive implementation took {t_naive:.4f} seconds")
     print(f"Vectorized implementation took {t_vectorized:.4f} seconds")
     print(f"Hybrid implementation took {t_hybrid:.4f} seconds")
     print(f"Numba implementation took {t_numba:.4f} seconds")
-
-    for dtype in [ np.float32 , np.float64 ]:
-        t_numba_dtype = bench(mandelbrot_naive_numba, -2 , 1 , -1.5 , 1.5 , 1024 , 1024, 100, dtype=dtype)
-        print(f"Numba implementation with {dtype} took {t_numba_dtype:.4f} seconds")
+    print(f"Numba32 implementation took {t_numba32:.4f} seconds")
     
-    r32 = mandelbrot_naive_numba ( -2 , 1 , -1.5 , 1.5 , 1024 , 1024 ,100 , dtype = np.float32 )
-    r64 = mandelbrot_naive_numba ( -2 , 1 , -1.5 , 1.5 , 1024 , 1024 ,100 , dtype = np.float64 )
+    r32 = mandelbrot_naive_numba32 ( -2 , 1 , -1.5 , 1.5 , 1024 , 1024 , 100)
+    r64 = mandelbrot_naive_numba ( -2 , 1 , -1.5 , 1.5 , 1024 , 1024 ,100 )
     fig , axes = plt . subplots (1 , 2, figsize =(12 , 4) )
     for ax , result , title in zip ( axes , [ r32 , r64 ] , ["float32 ", "float64 ( ref )"]) :
         ax.imshow ( result , cmap ="viridis", extent =( xmin , xmax , ymin , ymax ) )
         ax.set_title(title); ax.axis ("off")
     plt . savefig ("precision_comparison.png", dpi =150)
+    plt.show()
     print (f" Max diff float32 vs float64 : {np.abs(r32 - r64 ). max ()}")
+    print("Median diff:", np.median(np.abs(r32 - r64 )))
+    print("Number of differing pixels:", np.count_nonzero(np.abs(r32 - r64 )))
     
         
     # Plot the Mandelbrot set using vectorized implementation
