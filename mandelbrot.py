@@ -10,16 +10,6 @@ import time, statistics
 from numba import njit
 
 def mandelbrot_point(c, max_iter):
-    """
-    Determines the number of iterations for a point in the Mandelbrot set.
-
-    Parameters:
-    c (complex): The complex point to evaluate.
-    max_iter (int): The maximum number of iterations to perform.
-
-    Returns:
-    int: The number of iterations before divergence, or max_iter if it does not diverge.
-    """
     z = 0
     for n in range(max_iter):
         if abs(z) > 2:
@@ -39,7 +29,6 @@ def mandelbrot_set_naive(xmin, xmax, ymin, ymax, width, height, max_iter):
             result[i, j] = mandelbrot_point(c, max_iter)
 
     return result
-
 
 def mandelbrot_set_vectorized(xmin, xmax, ymin, ymax, width, height, max_iter):
     x_values = np.linspace(xmin, xmax, width)
@@ -75,11 +64,10 @@ def mandelbrot_hybrid(xmin, xmax, ymin, ymax, width, height, max_iter):
     return result
 
 @njit
-def mandelbrot_naive_numba(xmin, xmax, ymin, ymax, width, height, max_iter):
-    x = np . linspace ( xmin , xmax , width )
-    y = np . linspace ( ymin , ymax , height )
-    result = np . zeros (( height , width ) ,
-    dtype = np . int32 )
+def mandelbrot_naive_numba(xmin, xmax, ymin, ymax, width, height, max_iter, dtype = np . float64):
+    x = np.linspace ( xmin , xmax , width ).astype(dtype)
+    y = np.linspace ( ymin , ymax , height ).astype(dtype)
+    result = np . zeros (( height , width ), dtype = np.int32)
     for i in range ( height ):
         for j in range ( width ):
             c = x [j] + 1j * y[ i]
@@ -89,20 +77,18 @@ def mandelbrot_naive_numba(xmin, xmax, ymin, ymax, width, height, max_iter):
                 z.real * z.real + z.imag * z.imag <= 4.0:
                 z = z*z + c ; n += 1
             result [i , j ] = n
-        return result
-    z = z*z + c ; n += 1
-    result [i , j ] = n
     return result
+    
 
-
-def bench (fn , * args , runs =5):
-    fn (* args ) # warm -up
+def bench (fn , * args , runs =5, **kwargs):
+    fn (* args , **kwargs) # warm -up
     times = []
     for _ in range ( runs ) :
         t0 = time . perf_counter ()
-        fn (* args )
+        fn (* args , **kwargs)
         times . append ( time . perf_counter () - t0 )
     return statistics . median ( times )
+mandelbrot_naive_numba ( -2 , 1 , -1.5 , 1.5 , 1024 , 1024 ,100 , dtype = np.float64 )
 
 if __name__ == "__main__":
     # Parameters for the Mandelbrot set
@@ -120,11 +106,25 @@ if __name__ == "__main__":
     print(f"Hybrid implementation took {t_hybrid:.4f} seconds")
     print(f"Numba implementation took {t_numba:.4f} seconds")
 
+    for dtype in [ np.float32 , np.float64 ]:
+        t_numba_dtype = bench(mandelbrot_naive_numba, -2 , 1 , -1.5 , 1.5 , 1024 , 1024, 100, dtype=dtype)
+        print(f"Numba implementation with {dtype} took {t_numba_dtype:.4f} seconds")
+    
+    r32 = mandelbrot_naive_numba ( -2 , 1 , -1.5 , 1.5 , 1024 , 1024 ,100 , dtype = np.float32 )
+    r64 = mandelbrot_naive_numba ( -2 , 1 , -1.5 , 1.5 , 1024 , 1024 ,100 , dtype = np.float64 )
+    fig , axes = plt . subplots (1 , 2, figsize =(12 , 4) )
+    for ax , result , title in zip ( axes , [ r32 , r64 ] , ["float32 ", "float64 ( ref )"]) :
+        ax.imshow ( result , cmap ="viridis", extent =( xmin , xmax , ymin , ymax ) )
+        ax.set_title(title); ax.axis ("off")
+    plt . savefig ("precision_comparison.png", dpi =150)
+    print (f" Max diff float32 vs float64 : {np.abs(r32 - r64 ). max ()}")
+    
+        
     # Plot the Mandelbrot set using vectorized implementation
-    mandelbrot_image = mandelbrot_set_vectorized(*args)
-    plt.imshow(mandelbrot_image, extent=(xmin, xmax, ymin, ymax),cmap='viridis')
-    plt.colorbar()
-    plt.title('Mandelbrot Set')
-    plt.xlabel('Real Axis')
-    plt.ylabel('Imaginary Axis')
-    plt.show()
+    #mandelbrot_image = mandelbrot_set_vectorized(*args)
+    #plt.imshow(mandelbrot_image, extent=(xmin, xmax, ymin, ymax),cmap='viridis')
+    #plt.colorbar()
+    #plt.title('Mandelbrot Set')
+    #plt.xlabel('Real Axis')
+    #plt.ylabel('Imaginary Axis')
+    #plt.show()
