@@ -4,10 +4,10 @@ Mandelbrot Set Generator
 Author: [Sebastian Pabisz Frolund]
 Course: Numerical Scientific Computing 2026
 """
+import profile
 import numpy as np
 import matplotlib.pyplot as plt
 import time, statistics
-
 
 def mandelbrot_point(c, max_iter):
     """
@@ -50,6 +50,24 @@ def mandelbrot_set_naive(xmin, xmax, ymin, ymax, width, height, max_iter):
             c = complex(x_values[j], y_values[i])
             result[i, j] = mandelbrot_point(c, max_iter)
 
+    return result
+
+@profile
+def mandelbrot_set_naive_lineprofile(xmin, xmax, ymin, ymax, width, height, max_iter=100):
+    x = np.linspace(xmin, xmax, width)
+    y = np.linspace(ymin, ymax, height)
+    result = np.zeros((height, width), dtype=int)
+    for i in range(height):
+        for j in range(width):
+            c = x[j] + 1j * y[i]
+            z = 0
+            for n in range(max_iter):
+                if abs(z) > 2:
+                    result[i, j] = n
+                    break
+                z = z*z + c
+            else:
+                result[i, j] = max_iter
     return result
 
 def mandelbrot_set_vectorized(xmin, xmax, ymin, ymax, width, height, max_iter):
