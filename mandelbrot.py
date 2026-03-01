@@ -4,10 +4,10 @@ Mandelbrot Set Generator
 Author: [Sebastian Pabisz Frolund]
 Course: Numerical Scientific Computing 2026
 """
-import profile
 import numpy as np
 import matplotlib.pyplot as plt
 import time, statistics
+from numba import njit
 
 def mandelbrot_point(c, max_iter):
     """
@@ -28,18 +28,6 @@ def mandelbrot_point(c, max_iter):
     return max_iter
 
 def mandelbrot_set_naive(xmin, xmax, ymin, ymax, width, height, max_iter):
-    """
-    Generates the Mandelbrot set for a given region and resolution.
-
-    Parameters:
-    xmin, xmax (float): The range of the real part of the complex plane.
-    ymin, ymax (float): The range of the imaginary part of the complex plane.
-    width, height (int): The resolution of the output image.
-    max_iter (int): The maximum number of iterations to perform.
-
-    Returns:
-    np.ndarray: A 2D array representing the Mandelbrot set.
-    """
     result = np.zeros((height, width), dtype=int)
 
     x_values = np.linspace(xmin, xmax, width)
@@ -52,42 +40,12 @@ def mandelbrot_set_naive(xmin, xmax, ymin, ymax, width, height, max_iter):
 
     return result
 
-@profile
-def mandelbrot_set_naive_lineprofile(xmin, xmax, ymin, ymax, width, height, max_iter=100):
-    x = np.linspace(xmin, xmax, width)
-    y = np.linspace(ymin, ymax, height)
-    result = np.zeros((height, width), dtype=int)
-    for i in range(height):
-        for j in range(width):
-            c = x[j] + 1j * y[i]
-            z = 0
-            for n in range(max_iter):
-                if abs(z) > 2:
-                    result[i, j] = n
-                    break
-                z = z*z + c
-            else:
-                result[i, j] = max_iter
-    return result
 
 def mandelbrot_set_vectorized(xmin, xmax, ymin, ymax, width, height, max_iter):
-    """
-    Generates the Mandelbrot set using vectorized operations for improved performance.
-
-    Parameters:
-    xmin, xmax (float): The range of the real part of the complex plane.
-    ymin, ymax (float): The range of the imaginary part of the complex plane.
-    width, height (int): The resolution of the output image.
-    max_iter (int): The maximum number of iterations to perform.
-
-    Returns:
-    np.ndarray: A 2D array representing the Mandelbrot set.
-    """
     x_values = np.linspace(xmin, xmax, width)
     y_values = np.linspace(ymin, ymax, height)
     X, Y = np.meshgrid(x_values, y_values)
     C = X + 1j * Y
-    
     Z = np.zeros_like(C, dtype=complex)
     result = np.zeros(C.shape, dtype=int)
     for n in range(max_iter):
@@ -96,7 +54,48 @@ def mandelbrot_set_vectorized(xmin, xmax, ymin, ymax, width, height, max_iter):
         result[mask] += 1
     return result
 
-def bench (fn , * args , runs =5) :
+@njit
+def mandelbrot_point_numba (c , max_iter =100) :
+    z = 0 + 0j
+    for n in range ( max_iter ) :
+        if z.real * z.real + z.imag * z.imag > 4.0:
+            return n
+        z = z *z + c
+    return max_iter
+
+def mandelbrot_hybrid(xmin, xmax, ymin, ymax, width, height, max_iter):
+    x = np . linspace ( xmin , xmax , width )
+    y = np . linspace ( ymin , ymax , height )
+    result = np . zeros (( height , width ) ,
+    dtype = np . int32 )
+    for i in range ( height ):
+        for j in range ( width ):
+            c = x [j] + 1j * y[ i]
+            result [i ,j] = mandelbrot_point_numba(c, max_iter)
+    return result
+
+@njit
+def mandelbrot_naive_numba(xmin, xmax, ymin, ymax, width, height, max_iter):
+    x = np . linspace ( xmin , xmax , width )
+    y = np . linspace ( ymin , ymax , height )
+    result = np . zeros (( height , width ) ,
+    dtype = np . int32 )
+    for i in range ( height ):
+        for j in range ( width ):
+            c = x [j] + 1j * y[ i]
+            z = 0 + 0j
+            n = 0
+            while n < max_iter and \
+                z.real * z.real + z.imag * z.imag <= 4.0:
+                z = z*z + c ; n += 1
+            result [i , j ] = n
+        return result
+    z = z*z + c ; n += 1
+    result [i , j ] = n
+    return result
+
+
+def bench (fn , * args , runs =5):
     fn (* args ) # warm -up
     times = []
     for _ in range ( runs ) :
@@ -114,8 +113,12 @@ if __name__ == "__main__":
 
     t_naive = bench(mandelbrot_set_naive, *args)
     t_vectorized = bench(mandelbrot_set_vectorized, *args)
+    t_hybrid = bench(mandelbrot_hybrid, *args)
+    t_numba = bench(mandelbrot_naive_numba, *args)
     print(f"Naive implementation took {t_naive:.4f} seconds")
     print(f"Vectorized implementation took {t_vectorized:.4f} seconds")
+    print(f"Hybrid implementation took {t_hybrid:.4f} seconds")
+    print(f"Numba implementation took {t_numba:.4f} seconds")
 
     # Plot the Mandelbrot set using vectorized implementation
     mandelbrot_image = mandelbrot_set_vectorized(*args)
