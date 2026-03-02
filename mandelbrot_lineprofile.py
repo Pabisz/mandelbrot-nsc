@@ -1,3 +1,9 @@
+"""
+Mandelbrot Set Generator
+
+Author: [Sebastian Pabisz Frolund]
+Course: Numerical Scientific Computing 2026
+"""
 import numpy as np
 
 @profile
