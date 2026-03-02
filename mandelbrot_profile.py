@@ -1,3 +1,9 @@
+"""
+Mandelbrot Set Generator
+
+Author: [Sebastian Pabisz Frolund]
+Course: Numerical Scientific Computing 2026
+"""
 import cProfile , pstats
 from mandelbrot import mandelbrot_set_naive , mandelbrot_set_vectorized
 
