@@ -50,7 +50,7 @@ def mandelbrot_parallel(x_min, x_max, y_min, y_max, N, max_iter, n_workers=4):
     
 if __name__ == "__main__":
 
-    N, MAX_ITER = 1024, 100
+    N, MAX_ITER = 2048, 100
     X_MIN, X_MAX, Y_MIN, Y_MAX = -2, 1, -1.5, 1.5
 
     result = mandelbrot_parallel(X_MIN, X_MAX,Y_MIN, Y_MAX,N, MAX_ITER)
@@ -62,13 +62,18 @@ if __name__ == "__main__":
     ax.set_title("Parallel Mandelbrot")
 
     plt.show()
-    print(psutil.cpu_count(logical=False), "physical cores, ", psutil.cpu_count(), "logical cores")
+
     times = []
     for _ in range(3):
         t0 = time.perf_counter()
         mandelbrot_serial(X_MIN, X_MAX, Y_MIN, Y_MAX,N, MAX_ITER)
         times.append(time.perf_counter() - t0)
         t_serial = statistics.median(times)
+    
+    workers_list = []
+    efficiency_list = []
+    speedup_list = []
+    
     for n_workers in range(1, os.cpu_count() + 1):
         chunk_size = max(1, N // n_workers)
         chunks, row = [], 0
@@ -85,4 +90,18 @@ if __name__ == "__main__":
                 times.append(time.perf_counter() - t0)
         t_par = statistics.median(times)
         speedup = t_serial / t_par
-        print(f"{n_workers:2d} workers: {t_par:.3f}s, speedup={speedup:.2f}x, eff={speedup/n_workers*100:.0f}%")
+        effeciency = speedup / n_workers * 100
+        workers_list.append(n_workers)
+        speedup_list.append(speedup)
+        efficiency_list.append(effeciency)
+        print(f"{n_workers:2d} workers: {t_par:.3f}s, speedup={speedup:.2f}x, eff={effeciency:.0f}%")
+        
+    plt.figure(figsize=(8,6))
+    plt.plot(workers_list, speedup_list, marker="o", label="Measured speedup")
+    plt.plot(workers_list, workers_list, "--", label="Ideal speedup")
+    plt.xlabel("Number of CPU cores")
+    plt.ylabel("Speedup")
+    plt.title("Speedup vs CPU cores")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
