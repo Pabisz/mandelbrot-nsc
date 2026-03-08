@@ -16,17 +16,15 @@ def mandelbrot_pixel(c_real, c_imag, max_iter =100) :
     for n in range ( max_iter ) :
         zr2 = z_real * z_real
         zi2 = z_imag * z_imag
-        if zr2 + zi2 > 4.0:
-            return n
-        z_imag = 2.0 * z_real * z_imag + c_imag
-        z_real = zr2 - zi2 + c_real
+        if zr2 + zi2 > 4.0: return n
+        z_imag, z_real = 2.0 * z_real * z_imag + c_imag, zr2 - zi2 + c_real
     return max_iter
 
 @njit
 def mandelbrot_chunk(rowstart, rowend, N, x_min, x_max, y_min, y_max, max_iter):
     output = np.empty((rowend - rowstart, N), dtype=np.int32)
-    dx = (x_max - x_min) / N
-    dy = (y_max - y_min) / N
+    dx = (x_max - x_min) / (N - 1)
+    dy = (y_max - y_min) / (N - 1)
     for i in range(rowend-rowstart):
         c_imag = y_min + (rowstart + i) * dy
         for col in range(N):
