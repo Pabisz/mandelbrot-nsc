@@ -9,6 +9,8 @@ from numba import njit
 from multiprocessing import Pool
 import time, psutil, os, statistics, matplotlib.pyplot as plt
 from pathlib import Path
+from dask.distributed import Client, LocalCluster
+import dask
 
 @njit(cache=True)
 def mandelbrot_pixel(c_real, c_imag, max_iter =100) :
@@ -53,6 +55,16 @@ def mandelbrot_parallel(x_min, x_max, y_min, y_max, N, max_iter, n_workers=4, n_
     with Pool(processes=n_workers) as pool:
         pool.map(_worker, tiny) # warm-up: Numba JIT in all workers
         return np.vstack(pool.map(_worker, chunks))
+
+def mandelbrot_dask(x_min, x_max, y_min, y_max, N, max_iter, n_chunks=48):
+    chunk_size = max(1, N // n_chunks)
+    tasks,row = [], 0
+    while row < N:
+        end = min(row + chunk_size, N)
+        tasks.append(dask.delayed(mandelbrot_chunk)(row, end, N, x_min, x_max, y_min, y_max, max_iter))
+        row = end
+    parts = dask.compute(*tasks)
+    return np.vstack(parts)
     
 if __name__ == "__main__":
 
@@ -79,7 +91,7 @@ if __name__ == "__main__":
     workers_list = []
     efficiency_list = []
     speedup_list = []
-    tiny = [(0, 8, 8, X_MIN, X_MAX, Y_MIN, Y_MAX, MAX_ITER)]
+    tiny = [(0, 8, 8, X_MIN, X_MAX, Y_MIN, Y_MAX, 10)]
     
     for n_workers in range(1, os.cpu_count() + 1):
         chunk_size = max(1, N // n_workers)
@@ -113,8 +125,8 @@ if __name__ == "__main__":
     plt.grid(True)
     plt.show()
     
-    # Chunk sweeping for 13 workers (found to be optimal most of the time on my machine)
-    n_workers = 13
+    # Chunk sweeping for 12 workers (found to be optimal most of the time on my machine)
+    n_workers = 12
     chunks_list = []
     times_list = []
     lif_list = []
@@ -153,3 +165,42 @@ if __name__ == "__main__":
     plt.title("Load Imbalance Factor vs chunks")
     plt.grid(True)
     plt.show()
+    
+    #dask cluster test
+    chunks_list_dask = []
+    times_list_dask = []
+    lif_list_dask = []
+    
+    cluster = LocalCluster(n_workers=12, threads_per_worker=1)
+    client = Client(cluster)
+    client.run(lambda: mandelbrot_chunk(tiny)) # warm-up
+    times = []
+    for mult in [1,2,4,8,16,32]:
+        n_chunks = mult*n_workers
+        for _ in range(3):
+            t0 = time.perf_counter()
+            mandelbrot_dask(X_MIN, X_MAX, Y_MIN, Y_MAX,N, MAX_ITER, n_chunks)
+            times.append(time.perf_counter() - t0)
+        t_par = statistics.median(times)
+        lif = n_workers * t_par / t_serial - 1
+        chunks_list_dask.append(n_chunks)
+        times_list_dask.append(t_par)
+        lif_list_dask.append(lif)
+        print(f"{n_chunks:4d} chunks {t_par:.3f}s {t_serial/t_par:.1f}x LIF={lif:.2f}")
+    
+    plt.figure(figsize=(8,6))
+    plt.plot(chunks_list_dask, times_list_dask, marker="o")
+    plt.xlabel("Number of chunks")
+    plt.ylabel("Time (s)")
+    plt.title("Chunk sweep (dask)")
+    plt.grid(True)
+    plt.show()
+    
+    plt.figure(figsize=(8,6))
+    plt.plot(chunks_list_dask, lif_list_dask, marker="o")
+    plt.xlabel("Number of chunks")
+    plt.ylabel("LIF")
+    plt.title("Load Imbalance Factor vs chunks (dask)")
+    plt.grid(True)
+    plt.show()
+    client.close(); cluster.close()
