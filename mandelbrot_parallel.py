@@ -173,7 +173,7 @@ if __name__ == "__main__":
     
     cluster = LocalCluster(n_workers=12, threads_per_worker=1)
     client = Client(cluster)
-    client.run(lambda: mandelbrot_chunk(tiny)) # warm-up
+    client.run(lambda: mandelbrot_chunk(0, 8, 8, X_MIN, X_MAX, Y_MIN, Y_MAX, 10)) # warm-up
     times = []
     for mult in [1,2,4,8,16,32]:
         n_chunks = mult*n_workers
