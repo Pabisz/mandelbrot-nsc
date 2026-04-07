@@ -68,7 +68,7 @@ def mandelbrot_dask(x_min, x_max, y_min, y_max, N, max_iter, n_chunks=48):
     
 if __name__ == "__main__":
 
-    N, MAX_ITER = 1024, 100
+    N, MAX_ITER = 4096, 100
     X_MIN, X_MAX, Y_MIN, Y_MAX = -2, 1, -1.5, 1.5
 
     result = mandelbrot_parallel(X_MIN, X_MAX,Y_MIN, Y_MAX,N, MAX_ITER)
