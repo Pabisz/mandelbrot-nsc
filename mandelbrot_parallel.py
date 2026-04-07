@@ -126,6 +126,7 @@ if __name__ == "__main__":
     plt.show()
     
     # Chunk sweeping for 12 workers (found to be optimal most of the time on my machine)
+    print("\nChunk sweep for 12 workers:")
     n_workers = 12
     chunks_list = []
     times_list = []
@@ -167,16 +168,18 @@ if __name__ == "__main__":
     plt.show()
     
     #dask cluster test
+    print("\nDask chunk sweep:")
     chunks_list_dask = []
     times_list_dask = []
     lif_list_dask = []
     
-    cluster = LocalCluster(n_workers=12, threads_per_worker=1)
-    client = Client(cluster)
+    #cluster = LocalCluster(n_workers=12, threads_per_worker=1)
+    #client = Client(cluster)
+    client=Client("tcp://10.92.1.203:8786") 
     client.run(lambda: mandelbrot_chunk(0, 8, 8, X_MIN, X_MAX, Y_MIN, Y_MAX, 10)) # warm-up
-    times = []
     for mult in [1,2,4,8,16,32]:
         n_chunks = mult*n_workers
+        times = []
         for _ in range(3):
             t0 = time.perf_counter()
             mandelbrot_dask(X_MIN, X_MAX, Y_MIN, Y_MAX,N, MAX_ITER, n_chunks)
@@ -203,4 +206,4 @@ if __name__ == "__main__":
     plt.title("Load Imbalance Factor vs chunks (dask)")
     plt.grid(True)
     plt.show()
-    client.close(); cluster.close()
+    client.close(); #cluster.close()
