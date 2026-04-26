@@ -5,17 +5,14 @@ from matplotlib.colors import LogNorm
 def trajectory_divergence(N, MAX_ITER, TAU,x,y):
     C64 = (x[np.newaxis, :] + 1j * y[:, np.newaxis]).astype(np.complex128)
     C32 = C64.astype(np.complex64)
-
     z32 = np.zeros_like(C32)
     z64 = np.zeros_like(C64)
 
     diverge = np.full((N, N), MAX_ITER, dtype=np.int32)
     active = np.ones((N, N), dtype=bool)
-
     for k in range(MAX_ITER):
         if not active.any():
             break
-
         z32[active] = z32[active]**2 + C32[active]
         z64[active] = z64[active]**2 + C64[active]
 
@@ -26,7 +23,6 @@ def trajectory_divergence(N, MAX_ITER, TAU,x,y):
         active[newly] = False
 
     return diverge
-
 
 def condition_number(N, MAX_ITER, x, y):
     C = (x[np.newaxis, :] + 1j * y[:, np.newaxis]).astype(np.complex128)
@@ -55,13 +51,12 @@ def condition_number(N, MAX_ITER, x, y):
 
     return kappa
 
-
 if __name__ == "__main__":
     N, MAX_ITER, TAU = 512, 1000, 0.01
     x = np.linspace(-0.7530, -0.7490, N)
     y = np.linspace( 0.0990, 0.1030, N)
     
-    # --- Plot 1: Trajectory divergence ---
+    #Trajectory divergence
     diverge = trajectory_divergence(N, MAX_ITER, TAU, x, y)
     
     plt.figure()
@@ -70,7 +65,7 @@ if __name__ == "__main__":
     plt.title("Trajectory divergence")
     plt.show()
 
-    # --- Plot 2: Condition number ---
+    #Condition number approximation
     kappa = condition_number(N, MAX_ITER, x, y)
 
     cmap_k = plt.cm.hot.copy()
