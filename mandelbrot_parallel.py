@@ -14,6 +14,16 @@ import dask
 
 @njit(cache=True)
 def mandelbrot_pixel(c_real, c_imag, max_iter =100) :
+    """Calculate the Mandelbrot iteration count for a given complex number.
+
+    Args:
+        c_real (float): Real part of the complex number.
+        c_imag (float): Imaginary part of the complex number.
+        max_iter (int, optional): Maximum number of iterations. Defaults to 100.
+
+    Returns:
+        int: Number of iterations before divergence, or max_iter if it does not diverge.
+    """
     z_real = z_imag = 0.0
     for n in range ( max_iter ) :
         zr2 = z_real * z_real
@@ -24,6 +34,22 @@ def mandelbrot_pixel(c_real, c_imag, max_iter =100) :
 
 @njit(cache=True)
 def mandelbrot_chunk(rowstart, rowend, N, x_min, x_max, y_min, y_max, max_iter):
+    """Computes a horizontal chunk of the Mandelbrot set.
+
+    Args:
+        rowstart (int): Starting row index (inclusive) in the full image grid.
+        rowend (int): Ending row index (exclusive) in the full image grid.
+        N (int): Number of pixels in both x and y directions (image is NxN).
+        x_min (float): Minimum real value of the complex plane.
+        x_max (float): Maximum real value of the complex plane.
+        y_min (float): Minimum imaginary value of the complex plane.
+        y_max (float): Maximum imaginary value of the complex plane.
+        max_iter (int): Maximum number of iterations for divergence test.
+
+    Returns:
+        np.ndarray: 2D array of shape (rowend - rowstart, N) containing
+        iteration counts for each pixel in the specified chunk.
+    """
     output = np.empty((rowend - rowstart, N), dtype=np.int32)
     dx = (x_max - x_min) / (N - 1)
     dy = (y_max - y_min) / (N - 1)
@@ -34,12 +60,52 @@ def mandelbrot_chunk(rowstart, rowend, N, x_min, x_max, y_min, y_max, max_iter):
     return output
 
 def mandelbrot_serial(x_min, x_max, y_min, y_max, N, max_iter):
+    """Computes mandelbrot set for a given area (Runs mandelbrot_chunk with one chunk)
+
+    Args:
+        x_min (float): Minimum real value of the complex plane.
+        x_max (float): Maximum real value of the complex plane.
+        y_min (float): Minimum imaginary value of the complex plane.
+        y_max (float): Maximum imaginary value of the complex plane.
+        N (int): Number of pixels in both x and y directions (image is NxN).
+        max_iter (int): Maximum number of iterations for divergence test.
+
+    Returns:
+        np.ndarray: 2D array of iteration counts for the specified area.
+    """
     return mandelbrot_chunk(0, N, N, x_min, x_max, y_min, y_max, max_iter)
 
 def _worker(args):
+    """Worker function for parallel Mandelbrot computation.
+
+    Args:
+        args (tuple): Tuple containing the arguments:
+            (rowstart, rowend, N, x_min, x_max, y_min, y_max, max_iter)
+
+    Returns:
+        np.ndarray: 2D array containing iteration counts for the given chunk.
+    """
     return mandelbrot_chunk(*args)
 
 def mandelbrot_parallel(x_min, x_max, y_min, y_max, N, max_iter, n_workers=4, n_chunks=None, pool=None):
+    """Compute the Mandelbrot set using multiprocessing.
+
+    Args:
+        x_min (float): Minimum real value of the complex plane.
+        x_max (float): Maximum real value of the complex plane.
+        y_min (float): Minimum imaginary value of the complex plane.
+        y_max (float): Maximum imaginary value of the complex plane.
+        N (int): Number of pixels in both x and y directions (image is NxN).
+        max_iter (int): Maximum number of iterations for divergence test.
+        n_workers (int, optional): Number of worker processes. Defaults to 4.
+        n_chunks (int, optional): Number of chunks to split the work into.
+            Defaults to ``n_workers`` if not specified.
+        pool (multiprocessing.Pool, optional): Existing pool to reuse.
+            If None, a new pool is created.
+
+    Returns:
+        np.ndarray: 2D array of iteration counts for the full image.
+    """
     if n_chunks is None:
         n_chunks = n_workers
     
@@ -57,6 +123,22 @@ def mandelbrot_parallel(x_min, x_max, y_min, y_max, N, max_iter, n_workers=4, n_
         return np.vstack(pool.map(_worker, chunks))
 
 def mandelbrot_dask(x_min, x_max, y_min, y_max, N, max_iter, n_chunks=48):
+    """Compute the Mandelbrot set using Dask for parallel execution.
+
+    Args:
+        x_min (float): Minimum real value of the complex plane.
+        x_max (float): Maximum real value of the complex plane.
+        y_min (float): Minimum imaginary value of the complex plane.
+        y_max (float): Maximum imaginary value of the complex plane.
+        N (int): Number of pixels in both x and y directions (image is NxN).
+        max_iter (int): Maximum number of iterations for divergence test.
+        n_chunks (int, optional): Number of chunks/tasks to create.
+            Defaults to 48.
+
+    Returns:
+        np.ndarray: 2D array of iteration counts for the full image.
+    """
+
     chunk_size = max(1, N // n_chunks)
     tasks,row = [], 0
     while row < N:
