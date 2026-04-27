@@ -9,7 +9,22 @@ import matplotlib.pyplot as plt
 import time, statistics
 from numba import njit
 
-def mandelbrot_point(c, max_iter):
+def mandelbrot_point(c: complex, max_iter: int)-> int:
+    """
+    Compute the escape iteration count for a single complex point.
+
+    Parameters
+    ----------
+    c : complex
+        Complex parameter defining the Mandelbrot iteration.
+    max_iter : int
+        Maximum number of iterations.
+
+    Returns
+    -------
+    int
+        Number of iterations before |z| > 2, or max_iter if bounded.
+    """
     z = 0
     for n in range(max_iter):
         if abs(z) > 2:
@@ -17,7 +32,32 @@ def mandelbrot_point(c, max_iter):
         z = z * z + c
     return max_iter
 
-def mandelbrot_set_naive(xmin, xmax, ymin, ymax, width, height, max_iter):
+def mandelbrot_set_naive(xmin: float, xmax: float, ymin: float, ymax: float, width: int, height: int, max_iter: int)-> np.ndarray:
+    """
+    Compute the Mandelbrot set using a naive approach.
+
+    Parameters
+    ----------
+    xmin : float
+        Minimum real-axis value.
+    xmax : float
+        Maximum real-axis value.
+    ymin : float
+        Minimum imaginary-axis value.
+    ymax : float
+        Maximum imaginary-axis value.
+    width : int
+        Width of the output image.
+    height : int
+        Height of the output image.
+    max_iter : int
+        Maximum number of iterations for escape-time computation.
+
+    Returns
+    -------
+    np.ndarray
+        2D array of shape (height, width) containing escape iteration counts.
+    """
     result = np.zeros((height, width), dtype=int)
 
     x_values = np.linspace(xmin, xmax, width)
@@ -30,7 +70,32 @@ def mandelbrot_set_naive(xmin, xmax, ymin, ymax, width, height, max_iter):
 
     return result
 
-def mandelbrot_set_vectorized(xmin, xmax, ymin, ymax, width, height, max_iter):
+def mandelbrot_set_vectorized(xmin: float, xmax: float, ymin: float, ymax: float, width: int, height: int, max_iter: int)-> np.ndarray:
+    """
+    Compute the Mandelbrot set using a vectorized approach.
+
+    Parameters
+    ----------
+    xmin : float
+        Minimum real-axis value.
+    xmax : float
+        Maximum real-axis value.
+    ymin : float
+        Minimum imaginary-axis value.
+    ymax : float
+        Maximum imaginary-axis value.
+    width : int
+        Width of the output image.
+    height : int
+        Height of the output image.
+    max_iter : int
+        Maximum number of iterations for escape-time computation.
+
+    Returns
+    -------
+    np.ndarray
+        2D array of shape (height, width) containing escape iteration counts.
+    """
     x_values = np.linspace(xmin, xmax, width)
     y_values = np.linspace(ymin, ymax, height)
     X, Y = np.meshgrid(x_values, y_values)
@@ -44,7 +109,22 @@ def mandelbrot_set_vectorized(xmin, xmax, ymin, ymax, width, height, max_iter):
     return result
 
 @njit
-def mandelbrot_point_numba (c , max_iter =100) :
+def mandelbrot_point_numba (c : complex, max_iter : int) -> int:
+    """
+    Compute escape iteration count for a single point using Numba JIT.
+
+    Parameters
+    ----------
+    c : complex
+        Complex parameter.
+    max_iter : int, optional
+        Maximum number of iterations (default is 100).
+
+    Returns
+    -------
+    int
+        Escape iteration count.
+    """
     z = 0 + 0j
     for n in range ( max_iter ) :
         if z.real * z.real + z.imag * z.imag > 4.0:
@@ -52,7 +132,28 @@ def mandelbrot_point_numba (c , max_iter =100) :
         z = z *z + c
     return max_iter
 
-def mandelbrot_hybrid(xmin, xmax, ymin, ymax, width, height, max_iter):
+def mandelbrot_hybrid(xmin: float, xmax: float, ymin: float, ymax: float, width: int, height: int, max_iter: int)-> np.ndarray:
+    """
+    Compute the Mandelbrot set using Python loops with a Numba-accelerated point function.
+
+    Parameters
+    ----------
+    xmin, xmax : float
+        Real-axis bounds.
+    ymin, ymax : float
+        Imaginary-axis bounds.
+    width : int
+        Number of x-axis samples.
+    height : int
+        Number of y-axis samples.
+    max_iter : int
+        Maximum number of iterations.
+
+    Returns
+    -------
+    np.ndarray
+        2D array of escape iteration counts.
+    """
     x = np . linspace ( xmin , xmax , width )
     y = np . linspace ( ymin , ymax , height )
     result = np . zeros (( height , width ) ,
@@ -64,7 +165,30 @@ def mandelbrot_hybrid(xmin, xmax, ymin, ymax, width, height, max_iter):
     return result
 
 @njit
-def mandelbrot_naive_numba(xmin, xmax, ymin, ymax, width, height, max_iter, dtype = np . float64):
+def mandelbrot_naive_numba(xmin: float, xmax: float, ymin: float, ymax: float, width: int, height: int, max_iter: int, dtype = np . float64)-> np.ndarray:
+    """
+    Fully Numba-accelerated Mandelbrot computation using float64 precision.
+
+    Parameters
+    ----------
+    xmin, xmax : float
+        Real-axis bounds.
+    ymin, ymax : float
+        Imaginary-axis bounds.
+    width : int
+        Grid width.
+    height : int
+        Grid height.
+    max_iter : int
+        Maximum number of iterations.
+    dtype : np.dtype, optional
+        Floating-point precision (default is float64).
+
+    Returns
+    -------
+    np.ndarray
+        2D array of escape iteration counts (int32).
+    """
     x = np.linspace ( xmin , xmax , width ).astype(dtype)
     y = np.linspace ( ymin , ymax , height ).astype(dtype)
     result = np . zeros (( height , width ), dtype = np.int32)
@@ -80,7 +204,30 @@ def mandelbrot_naive_numba(xmin, xmax, ymin, ymax, width, height, max_iter, dtyp
     return result
 
 @njit
-def mandelbrot_naive_numba32(xmin, xmax, ymin, ymax, width, height, max_iter, dtype = np.float32):
+def mandelbrot_naive_numba32(xmin: float, xmax: float, ymin: float, ymax: float, width: int, height: int, max_iter: int, dtype = np.float32)-> np.ndarray:
+    """
+    Fully Numba-accelerated Mandelbrot computation using float32 precision.
+
+    Parameters
+    ----------
+    xmin, xmax : float
+        Real-axis bounds.
+    ymin, ymax : float
+        Imaginary-axis bounds.
+    width : int
+        Grid width.
+    height : int
+        Grid height.
+    max_iter : int
+        Maximum number of iterations.
+    dtype : np.dtype, optional
+        Floating-point precision (default is float32).
+
+    Returns
+    -------
+    np.ndarray
+        2D array of escape iteration counts (int32).
+    """
     x = np.linspace ( xmin , xmax , width ).astype(dtype)
     y = np.linspace ( ymin , ymax , height ).astype(dtype)
     result = np . zeros (( height , width ), dtype = np.int32)
@@ -95,7 +242,29 @@ def mandelbrot_naive_numba32(xmin, xmax, ymin, ymax, width, height, max_iter, dt
             result [i , j ] = n
     return result
 
-def bench (fn , * args , runs =5, **kwargs):
+def bench (fn: callable, * args , runs: int =5, **kwargs) -> float:
+    """
+    Benchmark a function by measuring median execution time.
+
+    Performs one warm-up run, then executes the function multiple times
+    and returns the median runtime.
+
+    Parameters
+    ----------
+    fn : callable
+        Function to benchmark.
+    *args :
+        Positional arguments passed to the function.
+    runs : int, optional
+        Number of timing runs (default is 5).
+    **kwargs :
+        Keyword arguments passed to the function.
+
+    Returns
+    -------
+    float
+        Median execution time in seconds.
+    """
     fn (* args , **kwargs) # warm -up
     times = []
     for _ in range ( runs ) :
