@@ -88,6 +88,7 @@ if __name__ == "__main__":
         times.append(time.perf_counter() - t0)
         t_serial = statistics.median(times)
     
+    
     workers_list = []
     efficiency_list = []
     speedup_list = []
@@ -133,6 +134,8 @@ if __name__ == "__main__":
     lif_list = []
     for mult in [1,2,4,8,16,32]:
         n_chunks = mult*n_workers
+        chunk_size = max(1, N // n_chunks)
+        chunks, row = [], 0
         while row < N:
             end = min(row + chunk_size, N)
             chunks.append((row, end, N, X_MIN, X_MAX, Y_MIN, Y_MAX, MAX_ITER))
@@ -173,9 +176,9 @@ if __name__ == "__main__":
     times_list_dask = []
     lif_list_dask = []
     
-    #cluster = LocalCluster(n_workers=12, threads_per_worker=1)
-    #client = Client(cluster)
-    client=Client("tcp://10.92.1.203:8786") 
+    cluster = LocalCluster(n_workers=12, threads_per_worker=1)
+    client = Client(cluster)
+    #client=Client("tcp://10.92.1.203:8786") 
     client.run(lambda: mandelbrot_chunk(0, 8, 8, X_MIN, X_MAX, Y_MIN, Y_MAX, 10)) # warm-up
     for mult in [1,2,4,8,16,32]:
         n_chunks = mult*n_workers
@@ -206,4 +209,5 @@ if __name__ == "__main__":
     plt.title("Load Imbalance Factor vs chunks (dask)")
     plt.grid(True)
     plt.show()
-    client.close(); #cluster.close()
+    client.close(); cluster.close()
+    
