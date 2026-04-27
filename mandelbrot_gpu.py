@@ -1,3 +1,10 @@
+"""
+GPU accelerated Mandelbrot Set Generator
+
+Author: [Sebastian Pabisz Frolund]
+Course: Numerical Scientific Computing 2026
+"""
+
 import pyopencl as cl
 import numpy as np
 import time, matplotlib.pyplot as plt
@@ -57,11 +64,45 @@ __kernel void mandelbrot_f64(
 }
 """
 
-def mandelbrot_gpu_f32(ctx, queue, N, x_min, x_max, y_min, y_max, max_iter, timing=False):
-    """Compute N×N Mandelbrot on GPU using float32 OpenCL kernel."""
+def mandelbrot_gpu_f32(ctx: cl.Context, queue: cl.CommandQueue, N: int, x_min: float, x_max: float, y_min: float, y_max: float, max_iter: int, timing: bool=False)-> np.ndarray:
+    """
+    Compute the Mandelbrot set on the GPU using a float32 OpenCL kernel,
+    or benchmark kernel execution time.
+
+    Parameters
+    ----------
+    ctx : cl.Context
+        OpenCL context containing the target device.
+    queue : cl.CommandQueue
+        Command queue used to execute kernels.
+    N : int
+        Grid resolution (produces an N×N output image).
+    x_min : float
+        Minimum real-axis value.
+    x_max : float
+        Maximum real-axis value.
+    y_min : float
+        Minimum imaginary-axis value.
+    y_max : float
+        Maximum imaginary-axis value.
+    max_iter : int
+        Maximum number of iterations for escape-time computation.
+    timing : bool, optional
+        If False (default), returns the computed Mandelbrot iteration counts.
+        If True, returns the median execution time over 3 runs.
+
+    Returns
+    -------
+    np.ndarray or float
+        If timing=False:
+            2D array of shape (N, N) containing escape iteration counts.
+        If timing=True:
+            Median execution time (in seconds) over 3 runs.
+    """
     prog = cl.Program(ctx, KERNEL_F32).build()
     result_host = np.zeros((N, N), dtype=np.int32)
     result_dev  = cl.Buffer(ctx, cl.mem_flags.WRITE_ONLY, result_host.nbytes)
+    
     if timing==False:
         prog.mandelbrot_f32(
             queue, (N, N), None, result_dev,
@@ -87,10 +128,42 @@ def mandelbrot_gpu_f32(ctx, queue, N, x_min, x_max, y_min, y_max, max_iter, timi
         return statistics.median(times)
 
 
-def mandelbrot_gpu_f64(ctx, queue, N, x_min, x_max, y_min, y_max, max_iter, timing=False):
-    """Compute N×N Mandelbrot on GPU using float64 OpenCL kernel.
+def mandelbrot_gpu_f64(ctx: cl.Context, queue: cl.CommandQueue, N: int, x_min: float, x_max: float, y_min: float, y_max: float, max_iter: int, timing: bool=False)-> np.ndarray:
+    """
+    Compute the Mandelbrot set on the GPU using a float64 OpenCL kernel,
+    or benchmark kernel execution time.
 
-    Returns None if device does not support cl_khr_fp64.
+    Parameters
+    ----------
+    ctx : cl.Context
+        OpenCL context containing the target device.
+    queue : cl.CommandQueue
+        Command queue used to execute kernels.
+    N : int
+        Grid resolution (produces an N×N output image).
+    x_min : float
+        Minimum real-axis value.
+    x_max : float
+        Maximum real-axis value.
+    y_min : float
+        Minimum imaginary-axis value.
+    y_max : float
+        Maximum imaginary-axis value.
+    max_iter : int
+        Maximum number of iterations for escape-time computation.
+    timing : bool, optional
+        If False (default), returns the computed Mandelbrot iteration counts.
+        If True, returns the median execution time over 3 runs.
+
+    Returns
+    -------
+    np.ndarray or float or None
+        If timing=False:
+            2D array of shape (N, N) with escape iteration counts.
+        If timing=True:
+            Median execution time (seconds) over 3 runs.
+        If the device does not support double precision:
+            None
     """
     dev = ctx.devices[0]
     if 'cl_khr_fp64' not in dev.extensions:
@@ -125,7 +198,7 @@ def mandelbrot_gpu_f64(ctx, queue, N, x_min, x_max, y_min, y_max, max_iter, timi
 
 
 if __name__ == "__main__":
-    N,MAX_ITER,X_MAX,X_MIN,Y_MAX,Y_MIN = 1024, 100, 1.0, -2.0, 1.5, -1.5
+    N,MAX_ITER,X_MAX,X_MIN,Y_MAX,Y_MIN = 4096, 100, 1.0, -2.0, 1.5, -1.5
     RUNS = 3
     
     ctx   = cl.create_some_context(interactive=False)
