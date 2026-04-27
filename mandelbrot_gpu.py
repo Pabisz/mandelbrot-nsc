@@ -1,6 +1,7 @@
 import pyopencl as cl
 import numpy as np
 import time, matplotlib.pyplot as plt
+import statistics
 
 KERNEL_F32 = """
 __kernel void mandelbrot_f32(
@@ -56,23 +57,37 @@ __kernel void mandelbrot_f64(
 }
 """
 
-def mandelbrot_gpu_f32(ctx, queue, N, x_min, x_max, y_min, y_max, max_iter):
+def mandelbrot_gpu_f32(ctx, queue, N, x_min, x_max, y_min, y_max, max_iter, timing=False):
     """Compute N×N Mandelbrot on GPU using float32 OpenCL kernel."""
     prog = cl.Program(ctx, KERNEL_F32).build()
     result_host = np.zeros((N, N), dtype=np.int32)
     result_dev  = cl.Buffer(ctx, cl.mem_flags.WRITE_ONLY, result_host.nbytes)
+    if timing==False:
+        prog.mandelbrot_f32(
+            queue, (N, N), None, result_dev,
+            np.float32(x_min), np.float32(x_max),
+            np.float32(y_min), np.float32(y_max),
+            np.int32(N), np.int32(max_iter))
+        cl.enqueue_copy(queue, result_host, result_dev)
+        queue.finish()
+        return result_host
+    
+    else:
+        times = []
+        for _ in range(3):
+            t0 = time.perf_counter()
+            prog.mandelbrot_f32(
+                queue, (N, N), None, result_dev,
+                np.float32(x_min), np.float32(x_max),
+                np.float32(y_min), np.float32(y_max),
+                np.int32(N), np.int32(max_iter))
+            cl.enqueue_copy(queue, result_host, result_dev)
+            queue.finish()
+            times.append(time.perf_counter() - t0)
+        return statistics.median(times)
 
-    prog.mandelbrot_f32(
-        queue, (N, N), None, result_dev,
-        np.float32(x_min), np.float32(x_max),
-        np.float32(y_min), np.float32(y_max),
-        np.int32(N), np.int32(max_iter))
-    cl.enqueue_copy(queue, result_host, result_dev)
-    queue.finish()
-    return result_host
 
-
-def mandelbrot_gpu_f64(ctx, queue, N, x_min, x_max, y_min, y_max, max_iter):
+def mandelbrot_gpu_f64(ctx, queue, N, x_min, x_max, y_min, y_max, max_iter, timing=False):
     """Compute N×N Mandelbrot on GPU using float64 OpenCL kernel.
 
     Returns None if device does not support cl_khr_fp64.
@@ -85,44 +100,46 @@ def mandelbrot_gpu_f64(ctx, queue, N, x_min, x_max, y_min, y_max, max_iter):
     prog = cl.Program(ctx, KERNEL_F64).build()
     result_host = np.zeros((N, N), dtype=np.int32)
     result_dev  = cl.Buffer(ctx, cl.mem_flags.WRITE_ONLY, result_host.nbytes)
-
-    prog.mandelbrot_f64(
-        queue, (N, N), None, result_dev,
-        np.float64(x_min), np.float64(x_max),
-        np.float64(y_min), np.float64(y_max),
-        np.int32(N), np.int32(max_iter))
-    cl.enqueue_copy(queue, result_host, result_dev)
-    queue.finish()
-    return result_host
-
-
-def benchmark(func, *args, runs=3):
-    """Return median wall time (seconds) over `runs` calls."""
-    import statistics
-    times = []
-    for _ in range(runs):
-        t0 = time.perf_counter()
-        func(*args); queue.finish()
-        times.append(time.perf_counter() - t0)
-    return statistics.median(times)
+    if timing==False:
+        prog.mandelbrot_f64(
+            queue, (N, N), None, result_dev,
+            np.float64(x_min), np.float64(x_max),
+            np.float64(y_min), np.float64(y_max),
+            np.int32(N), np.int32(max_iter))
+        cl.enqueue_copy(queue, result_host, result_dev)
+        queue.finish()
+        return result_host
+    else:
+        times = []
+        for _ in range(3):
+            t0 = time.perf_counter()
+            prog.mandelbrot_f64(
+                queue, (N, N), None, result_dev,
+                np.float64(x_min), np.float64(x_max),
+                np.float64(y_min), np.float64(y_max),
+                np.int32(N), np.int32(max_iter))
+            cl.enqueue_copy(queue, result_host, result_dev)
+            queue.finish()
+            times.append(time.perf_counter() - t0)
+        return statistics.median(times)
 
 
 if __name__ == "__main__":
     N,MAX_ITER,X_MAX,X_MIN,Y_MAX,Y_MIN = 1024, 100, 1.0, -2.0, 1.5, -1.5
     RUNS = 3
-
+    
     ctx   = cl.create_some_context(interactive=False)
     queue = cl.CommandQueue(ctx)
     dev   = ctx.devices[0]
     print(f"Device: {dev.name}\n")
-
+    
     # Warm-up pass (triggers kernel compilation)
     _ = mandelbrot_gpu_f32(ctx, queue, N=64, x_min=X_MIN, x_max=X_MAX, y_min=Y_MIN, y_max=Y_MAX, max_iter=MAX_ITER)
 
     print(f"Benchmarking N={N}, max_iter={MAX_ITER}, {RUNS} runs each:\n")
 
     # --- float32 ---
-    t32 = benchmark(mandelbrot_gpu_f32, ctx, queue, N, X_MIN, X_MAX, Y_MIN, Y_MAX, MAX_ITER, runs=RUNS)
+    t32 = mandelbrot_gpu_f32(ctx, queue, N, X_MIN, X_MAX, Y_MIN, Y_MAX, MAX_ITER, timing=True)
     img_f32 = mandelbrot_gpu_f32(ctx, queue, N, X_MIN, X_MAX, Y_MIN, Y_MAX, MAX_ITER)
     print(f"  float32: {t32*1e3:.1f} ms")
 
@@ -130,7 +147,7 @@ if __name__ == "__main__":
     t64 = None
     img_f64 = mandelbrot_gpu_f64(ctx, queue, N, X_MIN, X_MAX, Y_MIN, Y_MAX, MAX_ITER)
     if img_f64 is not None:
-        t64 = benchmark(mandelbrot_gpu_f64, ctx, queue, N, X_MIN, X_MAX, Y_MIN, Y_MAX, MAX_ITER, runs=RUNS)
+        t64 = mandelbrot_gpu_f64(ctx, queue, N, X_MIN, X_MAX, Y_MIN, Y_MAX, MAX_ITER, timing=True)
         print(f"  float64: {t64*1e3:.1f} ms")
         print(f"  Ratio float64/float32: {t64/t32:.2f}x")
         diff = np.abs(img_f32.astype(int) - img_f64.astype(int))
