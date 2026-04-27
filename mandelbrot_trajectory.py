@@ -1,8 +1,37 @@
+"""
+Arithmetic sensitivity of Mandelbrot trajectories
+
+Author: [Sebastian Pabisz Frolund]
+Course: Numerical Scientific Computing 2026
+"""
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 
-def trajectory_divergence(N, MAX_ITER, TAU,x,y):
+def trajectory_divergence(N: int, MAX_ITER: int, TAU: float, x: np.ndarray, y: np.ndarray)-> np.ndarray:
+    """
+    Estimate divergence iteration differences between single and double precision trajectories.
+
+    Parameters
+    ----------
+    N : int
+        Grid size along each dimension (assumes NxN parameter grid).
+    MAX_ITER : int
+        Maximum number of iterations for the escape/divergence process.
+    TAU : float
+        Threshold for detecting divergence between float32 and float64 trajectories.
+    x : np.ndarray
+        Real-axis parameter values (shape typically (N,)).
+    y : np.ndarray
+        Imaginary-axis parameter values (shape typically (N,)).
+
+    Returns
+    -------
+    np.ndarray
+        Integer array of shape (N, N) where each entry represents the iteration
+        index at which float32 and float64 trajectories diverged.
+        If no divergence occurs, the value is MAX_ITER.
+    """
     C64 = (x[np.newaxis, :] + 1j * y[:, np.newaxis]).astype(np.complex128)
     C32 = C64.astype(np.complex64)
     z32 = np.zeros_like(C32)
@@ -24,13 +53,35 @@ def trajectory_divergence(N, MAX_ITER, TAU,x,y):
 
     return diverge
 
-def condition_number(N, MAX_ITER, x, y):
+def condition_number(N: int, MAX_ITER: int, x: np.ndarray, y: np.ndarray)-> np.ndarray:
+    """
+    Estimate numerical sensitivity (condition number) of escape-time iterations
+    under perturbations in complex parameter space.
+
+    Parameters
+    ----------
+    N : int
+        Grid size along each dimension (assumes NxN parameter grid).
+    MAX_ITER : int
+        Maximum number of iterations for escape-time computation.
+    x : np.ndarray
+        Real-axis parameter values (shape typically (N,)).
+    y : np.ndarray
+        Imaginary-axis parameter values (shape typically (N,)).
+
+    Returns
+    -------
+    np.ndarray
+        Array of shape (N, N) containing estimated condition numbers.
+        Values represent sensitivity of escape time to perturbations;
+        entries may be NaN where escape time is zero.
+    """
     C = (x[np.newaxis, :] + 1j * y[:, np.newaxis]).astype(np.complex128)
 
     eps32 = float(np.finfo(np.float32).eps)
     delta = np.maximum(eps32 * np.abs(C), 1e-10)
 
-    def escape_count(C, max_iter):
+    def escape_count(C: np.ndarray, max_iter: int) -> np.ndarray:
         z = np.zeros_like(C)
         cnt = np.full(C.shape, max_iter, dtype=np.int32)
         esc = np.zeros(C.shape, dtype=bool)
