@@ -1,3 +1,9 @@
+"""
+Parallelized Mandelbrot Test Suite
+
+Author: [Sebastian Pabisz Frolund]
+Course: Numerical Scientific Computing 2026
+"""
 import numpy as np
 import pytest
 
