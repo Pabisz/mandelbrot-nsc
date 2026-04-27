@@ -1,5 +1,5 @@
 """
-Mandelbrot Set Generator
+Mandelbrot Set Profiler
 
 Author: [Sebastian Pabisz Frolund]
 Course: Numerical Scientific Computing 2026
