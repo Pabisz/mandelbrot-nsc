@@ -7,8 +7,10 @@ Course: Numerical Scientific Computing 2026
 import numpy as np
 from numba import njit
 from multiprocessing import Pool
-import time, psutil, os, statistics, matplotlib.pyplot as plt
-from pathlib import Path
+import time
+import os
+import statistics
+import matplotlib.pyplot as plt
 from dask.distributed import Client, LocalCluster
 import dask
 
@@ -28,7 +30,8 @@ def mandelbrot_pixel(c_real, c_imag, max_iter =100) :
     for n in range ( max_iter ) :
         zr2 = z_real * z_real
         zi2 = z_imag * z_imag
-        if zr2 + zi2 > 4.0: return n
+        if zr2 + zi2 > 4.0:
+            return n
         z_imag, z_real = 2.0 * z_real * z_imag + c_imag, zr2 - zi2 + c_real
     return max_iter
 
@@ -291,5 +294,6 @@ if __name__ == "__main__":
     plt.title("Load Imbalance Factor vs chunks (dask)")
     plt.grid(True)
     plt.show()
-    client.close(); cluster.close()
+    client.close()
+    cluster.close()
     
