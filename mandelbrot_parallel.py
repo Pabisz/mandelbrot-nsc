@@ -4,6 +4,8 @@ Parallelized Mandelbrot Set Generator
 Author: [Sebastian Pabisz Frolund]
 Course: Numerical Scientific Computing 2026
 """
+import multiprocessing
+
 import numpy as np
 from numba import njit
 from multiprocessing import Pool
@@ -15,7 +17,7 @@ from dask.distributed import Client, LocalCluster
 import dask
 
 @njit(cache=True)
-def mandelbrot_pixel(c_real, c_imag, max_iter =100) :
+def mandelbrot_pixel(c_real: float, c_imag: float, max_iter: int = 100) -> int:
     """Calculate the Mandelbrot iteration count for a given complex number.
 
     Args:
@@ -36,7 +38,7 @@ def mandelbrot_pixel(c_real, c_imag, max_iter =100) :
     return max_iter
 
 @njit(cache=True)
-def mandelbrot_chunk(rowstart, rowend, N, x_min, x_max, y_min, y_max, max_iter):
+def mandelbrot_chunk(rowstart: int, rowend: int, N: int, x_min: float, x_max: float, y_min: float, y_max: float, max_iter: int) -> np.ndarray:
     """Computes a horizontal chunk of the Mandelbrot set.
 
     Args:
@@ -62,7 +64,7 @@ def mandelbrot_chunk(rowstart, rowend, N, x_min, x_max, y_min, y_max, max_iter):
             output[i, col] = mandelbrot_pixel(x_min + col * dx, c_imag, max_iter)
     return output
 
-def mandelbrot_serial(x_min, x_max, y_min, y_max, N, max_iter):
+def mandelbrot_serial(x_min: float, x_max: float, y_min: float, y_max: float, N: int, max_iter: int) -> np.ndarray:
     """Computes mandelbrot set for a given area (Runs mandelbrot_chunk with one chunk)
 
     Args:
@@ -78,7 +80,7 @@ def mandelbrot_serial(x_min, x_max, y_min, y_max, N, max_iter):
     """
     return mandelbrot_chunk(0, N, N, x_min, x_max, y_min, y_max, max_iter)
 
-def _worker(args):
+def _worker(args: tuple) -> np.ndarray:
     """Worker function for parallel Mandelbrot computation.
 
     Args:
@@ -90,7 +92,7 @@ def _worker(args):
     """
     return mandelbrot_chunk(*args)
 
-def mandelbrot_parallel(x_min, x_max, y_min, y_max, N, max_iter, n_workers=4, n_chunks=None, pool=None):
+def mandelbrot_parallel(x_min: float, x_max: float, y_min: float, y_max: float, N: int, max_iter: int, n_workers: int = 4, n_chunks: int = None, pool: multiprocessing.Pool = None) -> np.ndarray:
     """Compute the Mandelbrot set using multiprocessing.
 
     Args:
@@ -125,7 +127,7 @@ def mandelbrot_parallel(x_min, x_max, y_min, y_max, N, max_iter, n_workers=4, n_
         pool.map(_worker, tiny) # warm-up: Numba JIT in all workers
         return np.vstack(pool.map(_worker, chunks))
 
-def mandelbrot_dask(x_min, x_max, y_min, y_max, N, max_iter, n_chunks=48):
+def mandelbrot_dask(x_min: float, x_max: float, y_min: float, y_max: float, N: int, max_iter: int, n_chunks: int = 48)-> np.ndarray:
     """Compute the Mandelbrot set using Dask for parallel execution.
 
     Args:
